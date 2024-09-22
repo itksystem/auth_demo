@@ -1,0 +1,207 @@
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret
+type: Opaque
+data:
+  DB_HOST: bXlzcWw=
+  DB_USER: cm9vdA==
+  DB_NAME: ZGVtbw==
+  DB_PASSWORD: YWRtaW4xMjM0NSQ=  # base64 кодированное значение "admin12345$"
+  mysql-root-password: YWRtaW4xMjM0NSQ=  # base64 кодированное значение "admin12345$"
+  mysql-user: ZGVtbw==  # base64 кодированное значение "demo"
+  mysql-password: MTIzNDU2  # base64 кодированное значение "123456"
+  mysql-database: ZGVtbw==  # base64 кодированное значение "demo"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: health-check-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: health-check-service
+  template:
+    metadata:
+      labels:
+        app: health-check-service
+    spec:
+      nodeSelector:
+        dedicated: worker
+      containers:
+      - name: health-check-service
+        image: itksystem/itksystem-helm-tz-app-image:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "500m"
+          limits:
+            memory: "512Mi"
+            cpu: "1"
+        env:
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: DB_HOST
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: DB_PASSWORD
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: DB_NAME
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: health-check-ingress
+  namespace: default
+  annotations:
+#    nginx.ingress.kubernetes.io/use-regex: "true"  # –азрешаем использовать регул€рные выражени€ в пут€х
+    nginx.ingress.kubernetes.io/rewrite-target: /users  # ѕереписываем путь дл€ правильного направлени€ трафика
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: arch.homework
+      http:
+        paths:
+          # ћаршрутизаци€ дл€ "/health"
+          - path: /users
+            pathType: Prefix
+            backend:
+              service:
+                name: health-check-service
+                port:
+                  number: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: health-check-service
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 3000        
+  selector:
+    app: health-check-service
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: bitnami/mysql:latest
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: mysql-root-password
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: mysql-password
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-migration-config
+data:
+  MIGRATION_SCRIPT: |
+    CREATE DATABASE IF NOT EXISTS user_auth;
+
+    USE user_auth;
+
+    CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        name VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql  # »м€ сервиса, который будет использоватьс€ как хост mysql
+  namespace: default  # ”бедитесь, что namespace совпадает с namespace пода
+spec:
+  selector:
+    app: mysql  # ћетка, соответствующа€ поду
+  ports:
+    - protocol: TCP
+      port: 3306  # ѕорт, который будет использован дл€ подключени€ к MySQL
+      targetPort: 3306  # ѕорт внутри контейнера MySQL
+
+---
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mysql-migration-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: mysql-migration
+        image: mysql:8
+        env:
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: DB_USER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: DB_PASSWORD
+        - name: MYSQL_HOST
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: DB_HOST 
+        - name: MIGRATION_SCRIPT
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-migration-config
+              key: MIGRATION_SCRIPT
+        command: ["sh", "-c", "echo \"$MIGRATION_SCRIPT\" | mysql -h $MYSQL_HOST -u root -p$MYSQL_PASSWORD"]
+      restartPolicy: Never
+  backoffLimit: 4
