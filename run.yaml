@@ -35,7 +35,7 @@ spec:
         dedicated: worker
       containers:
       - name: health-check-service
-        image: itksystem/itksystem-helm-tz-app-image:latest
+        image: itksystem/auth-demo-app:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3000

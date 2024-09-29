@@ -33,10 +33,10 @@ exports.findById = (id) => {
   });
 };
 
-exports.update = (id, name) => {
+exports.update = (id, name, email) => {
   return new Promise((resolve, reject) => {
-    const sql = 'UPDATE users SET name = ? WHERE id = ?';
-    db.query(sql, [name, id], (err, result) => {
+    const sql = 'UPDATE users SET name = ?, email= ? WHERE id = ?';
+    db.query(sql, [name, email,  id], (err, result) => {
       (err) 
       ? reject(err)
       : resolve(result);
