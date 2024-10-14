@@ -5,7 +5,7 @@ require('dotenv').config();
 const CREDENTIALS_MSG   = 'Укажите email и пароль';
 const CREDENTIALS_INVALID_MSG   = 'Неверные email или пароль';
 const REGISTRATION_SUCCESS_MSG   = 'Пользователь зарегистрирован успешно';
-const tokenExpiredTime = '1h'; // Время жизни токена
+const tokenExpiredTime = '3h'; // Время жизни токена
 
 
 exports.register = async (req, res) => {
