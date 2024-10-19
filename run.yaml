@@ -9,12 +9,24 @@ type: Opaque
 data:
   DB_HOST: bXlzcWw=
   DB_USER: cm9vdA==
-  DB_NAME: ZGVtbw==
+  DB_NAME: bXlkYg== # имя бд mydb
   DB_PASSWORD: YWRtaW4xMjM0NSQ=  # base64 кодированное значение "admin12345$"
   mysql-root-password: YWRtaW4xMjM0NSQ=  # base64 кодированное значение "admin12345$"
   mysql-user: ZGVtbw==  # base64 кодированное значение "demo"
   mysql-password: MTIzNDU2  # base64 кодированное значение "123456"
-  mysql-database: ZGVtbw==  # base64 кодированное значение "demo"
+  mysql-database: bXlkYg==  # base64 кодированное значение "mydb"
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rabbitmq-secret
+  namespace: default  # Убедись, что namespace соответствует твоему окружению
+type: Opaque
+data:
+  RABBITMQ_USER: Z3Vlc3Q=  # base64 кодированное значение "guest"
+  RABBITMQ_PASSWORD: Z3Vlc3Q=  # base64 кодированное значение "guest"
 
 ---
 apiVersion: apps/v1
@@ -143,9 +155,9 @@ metadata:
   name: mysql-migration-config
 data:
   MIGRATION_SCRIPT: |
-    CREATE DATABASE IF NOT EXISTS user_auth;
+    CREATE DATABASE IF NOT EXISTS mydb;
 
-    USE user_auth;
+    USE mydb;
 
     CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -179,7 +191,7 @@ data:
         KEY idx_status (status)
      ) ENGINE=InnoDB AUTO_INCREMENT=59 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-    CREATE TABLE transactions (
+    CREATE TABLE IF NOT EXISTS transactions (
         transaction_id bigint unsigned NOT NULL AUTO_INCREMENT,
         account_id bigint unsigned NOT NULL,
         transaction_type enum('DEPOSIT','WITHDRAWAL','RETURN') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
@@ -246,3 +258,50 @@ spec:
         command: ["sh", "-c", "echo \"$MIGRATION_SCRIPT\" | mysql -h $MYSQL_HOST -u root -p$MYSQL_PASSWORD"]
       restartPolicy: Never
   backoffLimit: 4
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:3-management
+        ports:
+        - containerPort: 5672  # Порт для AMQP
+        - containerPort: 15672 # Порт для панели управления RabbitMQ
+        env:
+        - name: RABBITMQ_USER
+          value: "guest"
+        - name: RABBITMQ_PASSWORD
+          value: "guest"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-service
+spec:
+  ports:
+    - name: rabbitmq-ampq-port
+      port: 5672  # AMQP
+      targetPort: 5672
+    - name: rabbitmq-management-ui-port
+      port: 15672 # Management UI
+      targetPort: 15672
+  selector:
+    app: rabbitmq
+  type: LoadBalancer
+
+
+

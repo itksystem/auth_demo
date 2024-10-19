@@ -4,7 +4,7 @@ const OrderModel = require('../models/orderModel');
 const AccountModel = require('../models/accountModel');
 const TransactionModel = require('../models/transactionModel');
 const  rabbit  = require('../controllers/rabbitMqController');
-const { v4: uuidv4 } = require('uuid'); // Убедитесь, что установлен uuid версии 8
+const { v4: uuidv4 } = require('uuid'); 
 require('dotenv').config();
 
 
@@ -69,8 +69,8 @@ exports.create = async (req, res) => {
       return res.status(400).json({ message: 'id обязателен.' });
     }  
     try {
-      const order = await OrderModel.findByOrderId(id);
-      if (order) {
+      const orders = await OrderModel.findByOrderId(id);
+      if (orders) {
         return res.status(200).json(         // вернули обьект заказа
              orders[0]
         );

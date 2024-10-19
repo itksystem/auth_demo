@@ -1,6 +1,18 @@
 const db = require('../config');
 const TransactionModel = require('../models/transactionModel');
 
+ /* создать счет  */
+ exports.create = (id) => {
+  return new Promise((resolve, reject) => {
+    const sql = ' INSERT INTO mydb.accounts (user_id, balance, created_at, updated_at) VALUES( ?, 0.00, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)';    
+    db.query(sql, [id], (err, result) => {
+      (err)
+      ? reject(err)
+      : resolve((result[0] != undefined ? result[0]: null));
+    });
+  });
+};
+
  /* найти счет */
  exports.findByAccountId = (id) => {
     return new Promise((resolve, reject) => {

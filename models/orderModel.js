@@ -1,6 +1,6 @@
 const db = require('../config');
 //const crypto = require('crypto');
-const { v4: uuidv4 } = require('uuid'); // Убедитесь, что установлен uuid версии 8
+const { v4: uuidv4 } = require('uuid'); 
 require('dotenv').config();
 
 exports.create = async (user_id, price, reference_id) => {

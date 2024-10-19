@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
+const AccountModel = require('../models/accountModel');
 require('dotenv').config();
 const CREDENTIALS_MSG   = 'Укажите email и пароль';
 const CREDENTIALS_INVALID_MSG   = 'Неверные email или пароль';
@@ -18,6 +19,8 @@ exports.register = async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await User.create(email, hashedPassword, name);
+    const user = await User.findByEmail(email);  // находим пользователя в БД
+    const account = await AccountModel.create(user.id);  // создали счет
     res.status(201).json({ message: REGISTRATION_SUCCESS_MSG  });
   } catch (error) {
     res.status(500).json({ message: error.message });

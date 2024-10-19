@@ -15,6 +15,10 @@ app.use('/api', authRoutes);
 app.use('/api', profileRoutes);
 app.use('/api', ordersRoutes);
 app.use('/api', accountRoutes);
+app.use('/',function(request, response) {
+  response.status(200).send('OK')
+ }
+);
 
 
 app.listen(process.env.PORT, () => {
