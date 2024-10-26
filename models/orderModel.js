@@ -1,12 +1,10 @@
 const db = require('../config');
-//const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid'); 
 require('dotenv').config();
 
+// создать заказ
 exports.create = async (user_id, price, reference_id) => {
-    return new Promise((resolve, reject) => {
-        // Генерация нового GUID
-           
+    return new Promise((resolve, reject) => {                   
         const  insertSql = `
         INSERT INTO orders 
         (user_id, price, status, created_at, updated_at, billing_transaction_id) 
@@ -22,7 +20,7 @@ exports.create = async (user_id, price, reference_id) => {
 
 
 
- /* найти заказ */
+ /* найти заказ по order_id */
   exports.findByOrderId = (id) => {
     return new Promise((resolve, reject) => {
       const sql = 'SELECT * FROM mydb.orders WHERE order_id = ?';
@@ -34,7 +32,7 @@ exports.create = async (user_id, price, reference_id) => {
     });
   };
 
-   /* найти заказ */
+   /* найти по user_id */
    exports.findByUserId = (id) => {
     return new Promise((resolve, reject) => {
       const sql = 'SELECT * FROM mydb.orders WHERE user_id = ?';

@@ -3,22 +3,31 @@ const UserModel = require('../models/userModel');
 const OrderModel = require('../models/orderModel');
 const AccountModel = require('../models/accountModel');
 const TransactionModel = require('../models/transactionModel');
-const  rabbit  = require('../controllers/rabbitMqController');
+const rabbit  = require('../controllers/rabbitMqController');
+const basketModel = require('../models/basketModel');
+const deliveryModel = require('../models/deliveryModel');
+const timeslot = require('../controllers/timeslotController');
+const warehouse = require('../controllers/warehouseController');
 const { v4: uuidv4 } = require('uuid'); 
 require('dotenv').config();
 
 
 /* создать заказ */
+/* Метод create будет играть роль оркестратора саги
+
+*/ 
 
 exports.create = async (req, res) => {
-    const { price } = req.body;
+    const { slotId, deliveryDate } = req.body;
     const  userId  =req.user.id;
-    
-    if (!userId || !price) {
-      return res.status(400).json({ message: 'userId и price обязательны.' });
-    }
-  
+    let items;
+    if (!userId) return res.status(400).json({ message: 'userId неопределен.' });       
+    if (!slotId || !deliveryDate ) return res.status(400).json({ message: 'slotId, deliveryDate неопределен.' });       
     try {           
+      const basketId = await basketModel.getBasketId(userId);
+      const price = await basketModel.getBasketAmount(basketId);
+      if (!price)  return res.status(400).json({ message: 'Корзина пуста' });
+
       const transaction_type = 'WITHDRAWAL';      
       const referenceId  = uuidv4();     
       const account = await AccountModel.findByUserId( userId, price);  // получили счет пользователя
@@ -27,28 +36,37 @@ exports.create = async (req, res) => {
       var debetAccountResult =false;
         try {
             if(!(orderId && account && transactionId && referenceId))  throw(' ошибка при работе с билинговым центром!')    
-                if(!(account.balance >= price))  throw(' недостаток средств на балансе!')
+                if(Number(account.balance) < Number(price))  throw(' недостаток средств на балансе!')
+                //  привязка товаров в корзине к заказу
+                   items = await basketModel.getBasket(userId);
+                if(!(await basketModel.closeBasket(userId, orderId))) throw('ошибка передачи товаров в корзине в заказ.');  
+                // резервируем на складе                   
+                   await warehouse.orderReservation(userId, items);
+                //
+                if(!(await deliveryModel.reserveCourier(slotId, deliveryDate, orderId))) throw('ошибка передачи товаров в доставку');       
+                //  списываем деньги со счета           
                 debetAccountResult = await AccountModel.withdraw(price, account.account_id)
                 if(!(debetAccountResult)) throw(' ошибка списания средств со счета')                          
                 if(!(await TransactionModel.success(referenceId))) throw('ошибка завершения транзакции');
-                if(!(await OrderModel.success(orderId))) throw('ошибка подверждания заказа.');       
+                if(!(await OrderModel.success(orderId))) throw('ошибка подверждания заказа.');    
+    
                     try {  // отправляем сообщение в сервис нотификаций
                             let conn  = new rabbit.ProducerAMQP();
-                            await conn.orderNotyficationSend( orderId ,(e)=>{
-                                throw(e); // получили ошибку - выбросили exception
-                             }
+                                await conn.orderNotyficationSend( orderId ,(e)=>{  throw(e);  } // получили ошибку - выбросили exception 
                              );
                         } catch (err) {
-                      console.log('rabbit.SendMessage.orderNotyficationSend =>'+err); // exception обработали тут
+                      console.log('rabbit.SendMessage.orderNotyficationSend =>'+err);           // exception обработали тут
                     }
                 return res.status(201).json({ message: 'Заказ успешно создан.',  order: orderId });
-            } catch (error) {                
-                await TransactionModel.failed(referenceId);
-                await OrderModel.failed(orderId);  
-                if(debetAccountResult) { // если списание произошло - формируем откатную транзакцию, возвращаем деньги клиенту
-                  const _transactionId = await TransactionModel.return(referenceId);  // создали транзакцию  return   
-                  const _transaction =  await TransactionModel.findById(_transactionId); // получили  транзакцию
-                  if(_transaction) { // если транзакция успешно создана
+            } catch (error) {                                              /* откатный этап саги - откатываем все операции */
+                await TransactionModel.failed(referenceId);                              // установили признак ошибочной транзакции
+                await OrderModel.failed(orderId);                                        // установили признак ошибки в обработке заказа
+                await deliveryModel.cancelReservation(orderId);                          // отменили доставку, если она заказана
+                await warehouse.orderCancelReservation(orderId, items);                  // отменили резервацию на складе
+                if(debetAccountResult) {                                                 // если списание произошло - формируем откатную транзакцию, возвращаем деньги клиенту
+                  const _transactionId = await TransactionModel.return(referenceId);     // создали транзакцию  return   
+                  const _transaction =  await TransactionModel.findById(_transactionId); // получили  транзакцию                  
+                  if(_transaction) {                                                     // если транзакция успешно создана
                     if(!(await TransactionModel.success(_transaction.reference_id)) 
                         || !(await AccountModel.return(_transaction.reference_id)) 
                           || !(await TransactionModel.success(_transaction.reference_id))) throw('ошибка завершения транзакции');
@@ -58,7 +76,7 @@ exports.create = async (req, res) => {
         }         
       } catch (error) {
       console.error('Ошибка при создании заказа: ', error);       
-      return res.status(500).json({ message: 'Внутренняя ошибка сервера.' });
+      return res.status(500).json({ message: error });
     }
   };
   

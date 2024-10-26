@@ -2,6 +2,7 @@ const db = require('../config');
 const { v4: uuidv4 } = require('uuid'); // Убедитесь, что установлен uuid версии 8
 require('dotenv').config();
 
+
  /* найти по referency_id ттранзакции */
  exports.findByReferenceId = (id) => {
     return new Promise((resolve, reject) => {
