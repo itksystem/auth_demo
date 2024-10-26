@@ -208,63 +208,29 @@ data:
 
 
     CREATE TABLE IF NOT EXISTS warehouse (
-         id bigint AUTO_INCREMENT PRIMARY KEY,
-         product_id bigint NOT NULL,  
-         quantity int NOT NULL,       
-         reserved_quantity int DEFAULT 0,  
+         id BIGINT AUTO_INCREMENT PRIMARY KEY,
+         product_id BIGINT NOT NULL,  
+         quantity INT NOT NULL,       
+         reserved_quantity INT DEFAULT 0,  
          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-         product_name varchar(255) NOT NULL,
-         price decimal(10,2) NOT NULL DEFAULT '0.00',
-         UNIQUE KEY `idx_product_id` (`product_id`) USING BTREE
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         );
 
         CREATE INDEX idx_warehouse_product_id ON warehouse (product_id);
 
-    CREATE TABLE IF NOT EXISTS delivery (
+        CREATE TABLE IF NOT EXISTS delivery (
          id BIGINT AUTO_INCREMENT PRIMARY KEY,
          courier_id BIGINT NOT NULL,  
          time_slot VARCHAR(50) NOT NULL,  
          reserved BOOLEAN DEFAULT FALSE,  
          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-         order_id bigint NOT NULL,
-         UNIQUE KEY `delivery_order_id_IDX` (`order_id`) USING BTREE
+         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         );
 
         CREATE INDEX idx_delivery_courier_id ON delivery (courier_id);
         CREATE INDEX idx_delivery_time_slot ON delivery (time_slot);
 
-    CREATE TABLE IF NOT EXISTS `time_slots` (
-        `slot_id` bigint unsigned NOT NULL AUTO_INCREMENT,
-        `slot_begin` time DEFAULT NULL,
-        `slot_end` time DEFAULT NULL,
-        `max_count` int NOT NULL DEFAULT '0',
-        PRIMARY KEY (`slot_id`),
-        KEY `time_slots_slot_begin_IDX` (`slot_begin`) USING BTREE,
-        KEY `time_slots_slot_end_IDX` (`slot_end`) USING BTREE,
-        KEY `time_slots_max_count_IDX` (`max_count`) USING BTREE
-        ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-    CREATE TABLE IF NOT EXISTS `basket` (
-    `id` bigint NOT NULL AUTO_INCREMENT,
-    `user_id` bigint NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `user_id` (`user_id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-
-    CREATE TABLE IF NOT EXISTS `basket_item` (
-    `id` bigint NOT NULL AUTO_INCREMENT,
-    `basket_id` bigint NOT NULL,
-    `product_id` bigint NOT NULL,
-    `quantity` int DEFAULT '1',
-    `order_id` bigint DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    KEY `basket_item_basket_FK` (`basket_id`),
-    KEY `basket_item_product_id_IDX` (`product_id`) USING BTREE,
-    CONSTRAINT `basket_item_basket_FK` FOREIGN KEY (`basket_id`) REFERENCES `basket` (`id`) ON DELETE CASCADE
-    ) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 ---
 apiVersion: v1
