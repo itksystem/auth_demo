@@ -70,3 +70,14 @@ exports.create = async (user_id, price, reference_id) => {
     });
   };
   
+  /* найти заказ по id транзакции */
+  exports.findByReferenceId = (referenceId) => {
+    return new Promise((resolve, reject) => {
+      const sql = 'SELECT * FROM mydb.orders WHERE billing_transaction_id = ?';
+      db.query(sql, [referenceId], (err, result) => {
+        (err)
+        ? reject(err)
+        : resolve((result[0] != undefined ? result[0]: null));
+      });
+    });
+  };

@@ -11,13 +11,22 @@ const warehouse = require('../controllers/warehouseController');
 const { v4: uuidv4 } = require('uuid'); 
 require('dotenv').config();
 
+/*  Делаем иденпотентный запрос на создание заказа 
+  identKey - формируется на стороне клиента
+*/
+exports.createIdenp = async (req, res) => {  
+  const { referenceId } = req.params;  
+  const orderId = await OrderModel.findByReferenceId(referenceId);    // проверяем есть ли заказ с referenceId
+  if(orderId) return res.status(201).json({ message: 'Заказ успешно создан.',  order: orderId }); // если заказ есть - выдали тот же результат что и при создании, новый заказ не создаем
+  await exports.create(req, res, referenceId); // иначе создаем новый заказ
+}  
 
 /* создать заказ */
 /* Метод create будет играть роль оркестратора саги
 
 */ 
 
-exports.create = async (req, res) => {
+exports.create = async (req, res, _referenceId = null) => {
     const { slotId, deliveryDate } = req.body;
     const  userId  =req.user.id;
     let items;
@@ -29,7 +38,7 @@ exports.create = async (req, res) => {
       if (!price)  return res.status(400).json({ message: 'Корзина пуста' });
 
       const transaction_type = 'WITHDRAWAL';      
-      const referenceId  = uuidv4();     
+      const referenceId  = (!_referenceId ? uuidv4() : _referenceId);     
       const account = await AccountModel.findByUserId( userId, price);  // получили счет пользователя
       const transactionId = (account.account_id ? await TransactionModel.create(account.account_id, transaction_type, price, referenceId) : null);  // создали транзакцию в статусе PENDING
       const orderId = (transactionId ? await OrderModel.create(userId, price, referenceId) : null);    // создали заказ и связали с транзакцией через referenceId
