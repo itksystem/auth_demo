@@ -1,12 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const authRoutes = require('./routes/auth');
-const profileRoutes = require('./routes/profile');
-const ordersRoutes = require('./routes/orders');
-const accountRoutes = require('./routes/account');
-const warehouseRoutes = require('./routes/warehouse');
-const basketRoutes = require('./routes/basket');
-const deliveryRoutes = require('./routes/delivery');
 
 const app = express();
 app.use(bodyParser.json());
