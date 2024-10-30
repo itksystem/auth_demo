@@ -9,6 +9,12 @@ app.use(function(request, response, next){
   next();
 });
 app.use('/api', authRoutes);
+app.use('/api', profileRoutes);
+app.use('/api', ordersRoutes);
+app.use('/api', accountRoutes);
+// app.use('/api', warehouseRoutes);
+app.use('/api', basketRoutes);
+app.use('/api', deliveryRoutes);
 app.use('/',function(request, response) { // проверка что сервис жив
   response.status(200).send('OK')
  }
